@@ -51,6 +51,8 @@ class SheetViewSet(viewsets.ModelViewSet):
     serializer_class = SheetSerializer
 
     def get_queryset(self):
+        if self.action in ("update", "partial_update", "destroy"):
+            return Sheet.objects.filter(owner=self.request.user)
         return Sheet.objects.filter(
             Q(owner=self.request.user) | Q(is_public=True)
         ).distinct()
