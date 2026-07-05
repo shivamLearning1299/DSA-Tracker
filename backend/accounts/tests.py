@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APITestCase
+from rest_framework_simplejwt.tokens import RefreshToken
 
 User = get_user_model()
 
@@ -60,4 +61,21 @@ class GoogleLoginViewTests(APITestCase):
     def test_credential_without_email_is_rejected(self, mock_verify):
         mock_verify.return_value = {}
         response = self.client.post("/api/auth/google/", {"credential": "good"})
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class TokenRefreshTests(APITestCase):
+    def test_valid_refresh_token_returns_new_access_token(self):
+        user = User.objects.create_user(username="a@example.com", email="a@example.com")
+        refresh = RefreshToken.for_user(user)
+        response = self.client.post(
+            "/api/auth/token/refresh/", {"refresh": str(refresh)}
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+
+    def test_invalid_refresh_token_is_rejected(self):
+        response = self.client.post(
+            "/api/auth/token/refresh/", {"refresh": "not-a-real-token"}
+        )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
